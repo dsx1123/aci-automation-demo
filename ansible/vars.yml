@@ -1,0 +1,89 @@
+---
+vmm_domain: F1_DVS
+tenant:
+  name: ANSIBLE-DEMO
+  description: "delete me"
+vrf:
+  name: vrf1
+  tenant: "{{ tenant.name }}"
+  description: "Ansible Demo vrf"
+app:
+  name: app1
+  tenant: "{{ tenant.name }}"
+bd:
+  - name: bd-web
+    tenant: "{{ tenant.name }}"
+    vrf: "{{ vrf.name }}"
+    arp_flooding: true
+    l2_unknown_unicast: proxy
+    l3_unknown_multicast: flood
+    multi_dest: bd-flood
+    gateway: 192.168.10.1/24
+  - name: bd-app
+    tenant: "{{ tenant.name }}"
+    vrf: "{{ vrf.name }}"
+    arp_flooding: true
+    l2_unknown_unicast: proxy
+    l3_unknown_multicast: flood
+    multi_dest: bd-flood
+    gateway: 192.168.11.1/24
+  - name: bd-db
+    tenant: "{{ tenant.name }}"
+    vrf: "{{ vrf.name }}"
+    arp_flooding: true
+    l2_unknown_unicast: proxy
+    l3_unknown_multicast: flood
+    multi_dest: bd-flood
+    gateway: 192.168.12.1/24
+epg:
+  - name: web
+    bd: bd-web
+    vmm_domain: "{{ vmm_domain }}"
+  - name: app
+    bd: bd-app
+    vmm_domain: "{{ vmm_domain }}"
+  - name: db
+    bd: bd-db
+    vmm_domain: "{{ vmm_domain }}"
+epg_contract:
+  - epg_name: web
+    contract_name: web-app
+    contract_type: consumer
+  - epg_name: app
+    contract_name: web-app
+    contract_type: provider
+  - epg_name: app
+    contract_name: app-db
+    contract_type: consumer
+  - epg_name: db
+    contract_name: app-db
+    contract_type: provider
+filter:
+  - name: tomcat-app
+    description: filter from web to app epg
+    entry:
+      name: tomcat-app
+      filter: web-app
+      ether_type: ip
+      ip_protocol: tcp
+      dst_port_start: 8080
+      dst_port_end: 8080
+  - name: mysql-db
+    description: filter from app to web epg
+    entry:
+      name: mysql-db
+      ether_type: ip
+      ip_protocol: tcp
+      dst_port_start: 3306
+      dst_port_end: 3306
+contract:
+  - name: web-app
+    description: contract from web to app
+    scope: application-profile
+    filter:
+      name: tomcat-app
+  - name: app-db
+    description: contract from app to db
+    scope: application-profile
+    filter:
+      name: mysql-db

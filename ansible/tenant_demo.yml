@@ -1,0 +1,144 @@
+---
+- hosts: aci
+  connection: local
+  gather_facts: false
+  collections:
+    - cisco.aci
+  vars:
+    aci_login: &aci_login
+      hostname: '{{ inventory_hostname }}'
+      username: '{{ username }}'
+      password: '{{ password }}'
+      use_proxy: false
+      use_ssl: true
+      validate_certs: false
+  vars_files:
+    - ./vars.yml
+  tasks:
+    - name: TASK 01 CREATE TENAT {{ tenant.name }}
+      aci_tenant:
+        <<: *aci_login
+        tenant: '{{ tenant.name }}'
+        description: '{{ tenant.description }}'
+        state: present
+
+    - name: TASK 02 CREATE VRF {{ vrf.name }}
+      aci_vrf:
+        <<: *aci_login
+        vrf: '{{ vrf.name }}'
+        tenant: '{{ tenant.name }}'
+
+    - name: TASK 03 CREATE APPLICATION PROFILE {{ app.name }}
+      aci_ap:
+        <<: *aci_login
+        ap: '{{ app.name }}'
+        tenant: '{{ tenant.name }}'
+
+    - name: TASK 04 Create BD
+      aci_bd:
+        <<: *aci_login
+        tenant: '{{ item.tenant }}'
+        bd: '{{ item.name }}'
+        vrf: '{{ item.vrf }}'
+        arp_flooding: "{{ item.arp_flooding }}"
+        l2_unknown_unicast: "{{ item.l2_unknown_unicast }}"
+        l3_unknown_multicast: "{{ item.l3_unknown_multicast }}"
+        multi_dest: "{{ item.multi_dest }}"
+      loop: "{{ bd }}"
+
+    - name: CREATE TENANT BD SUBNET
+      aci_bd_subnet:
+        <<: *aci_login
+        tenant: "{{ item.tenant }}"
+        bd: "{{ item.name }}"
+        gateway: '{{ item.gateway | ansible.netcommon.ipv4 }}'
+        mask: "{{ item.gateway | ipaddr('prefix') }}"
+      loop: "{{ bd }}"
+
+    - name: CREATE EPG
+      aci_epg:
+        <<: *aci_login
+        epg: '{{ item.name }}'
+        ap: '{{ app.name }}'
+        tenant: '{{ tenant.name }}'
+        bd: '{{ item.bd }}'
+      loop: "{{ epg }}"
+
+    - name: ASSOCIATE VMM DOMAIN TO  EPG
+      aci_epg_to_domain:
+        <<: *aci_login
+        epg: "{{ item.name }}"
+        ap: '{{ app.name }}'
+        tenant: '{{ tenant.name }}'
+        domain: '{{ item.vmm_domain }}'
+        domain_type: 'vmm'
+        vm_provider: 'vmware'
+        encap_mode: 'auto'
+        resolution_immediacy: 'pre-provision'
+        deploy_immediacy: 'immediate'
+      loop: "{{ epg}}"
+
+    - name: CREATE FILTERS
+      aci_filter:
+        <<: *aci_login
+        tenant: "{{ tenant.name }}"
+        name: "{{ item.name }}"
+      loop: "{{ filter }}"
+      tags:
+        - filter
+
+    - name: CREATE FILTER ENTRIES
+      aci_filter_entry:
+        <<: *aci_login
+        tenant: "{{ tenant.name }}"
+        name: "{{ item.entry.name }}"
+        filter: "{{ item.name}}"
+        ether_type: "{{ item.entry.ether_type }}"
+        ip_protocol: "{{ item.entry.ip_protocol }}"
+        dst_port_start: "{{ item.entry.dst_port_start | default() }}"
+        dst_port_end: "{{ item.entry.dst_port_end | default() }}"
+      loop: "{{ filter }}"
+      tags:
+        - filter
+
+    - name: CREATE CONTRACT
+      aci_contract:
+        <<: *aci_login
+        tenant: "{{ tenant.name }}"
+        name: "{{ item.name }}"
+        description: "{{ item.description }}"
+        scope: "{{ item.scope }}"
+      loop: "{{ contract }}"
+      tags:
+        - contract
+    - name: CREATE CONTRACT SUBJECT
+      aci_contract_subject:
+        <<: *aci_login
+        tenant: "{{ tenant.name }}"
+        name: "{{ item.filter.name }}"
+        contract: "{{ item.name }}"
+        reverse_filter: true
+      loop: "{{ contract }}"
+      tags:
+        - contract
+    - name: ADD FILTER TO CONTRACT SUBJECT
+      aci_contract_subject_to_filter:
+        <<: *aci_login
+        tenant: "{{ tenant.name }}"
+        contract: "{{ item.name }}"
+        subject: "{{ item.filter.name }}"
+        filter: "{{ item.filter.name }}"
+      loop: "{{ contract }}"
+      tags:
+        - contract
+    - name: ASSOCIATE CONTRACT TO EPG
+      aci_epg_to_contract:
+        <<: *aci_login
+        tenant: "{{ tenant.name }}"
+        ap: "{{ app.name }}"
+        epg: "{{ item.epg_name }}"
+        contract: "{{ item.contract_name }}"
+        contract_type: "{{ item.contract_type }}"
+      loop: "{{ epg_contract }}"
+      tags:
+        - epg
