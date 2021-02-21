@@ -2,7 +2,7 @@
 vmm_domain: F1_DVS
 tenant:
   name: ANSIBLE-DEMO
-  description: "delete me"
+  description: "tenant create from ansible"
 vrf:
   name: vrf1
   tenant: "{{ tenant.name }}"

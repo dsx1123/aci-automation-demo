@@ -21,18 +21,24 @@
         tenant: '{{ tenant.name }}'
         description: '{{ tenant.description }}'
         state: present
+      tags:
+        - tenant
 
     - name: TASK 02 CREATE VRF {{ vrf.name }}
       aci_vrf:
         <<: *aci_login
         vrf: '{{ vrf.name }}'
         tenant: '{{ tenant.name }}'
+      tags:
+        - vrf
 
     - name: TASK 03 CREATE APPLICATION PROFILE {{ app.name }}
       aci_ap:
         <<: *aci_login
         ap: '{{ app.name }}'
         tenant: '{{ tenant.name }}'
+      tags:
+        - app
 
     - name: TASK 04 Create BD
       aci_bd:
@@ -45,8 +51,10 @@
         l3_unknown_multicast: "{{ item.l3_unknown_multicast }}"
         multi_dest: "{{ item.multi_dest }}"
       loop: "{{ bd }}"
+      tags:
+        - bd
 
-    - name: CREATE TENANT BD SUBNET
+    - name: TASK 05 CREATE TENANT BD SUBNET
       aci_bd_subnet:
         <<: *aci_login
         tenant: "{{ item.tenant }}"
@@ -54,8 +62,10 @@
         gateway: '{{ item.gateway | ansible.netcommon.ipv4 }}'
         mask: "{{ item.gateway | ipaddr('prefix') }}"
       loop: "{{ bd }}"
+      tags:
+        - bd
 
-    - name: CREATE EPG
+    - name: TASK 06 CREATE EPG
       aci_epg:
         <<: *aci_login
         epg: '{{ item.name }}'
@@ -63,8 +73,10 @@
         tenant: '{{ tenant.name }}'
         bd: '{{ item.bd }}'
       loop: "{{ epg }}"
+      tags:
+        - epg
 
-    - name: ASSOCIATE VMM DOMAIN TO  EPG
+    - name: TASK 07 ASSOCIATE VMM DOMAIN TO EPG
       aci_epg_to_domain:
         <<: *aci_login
         epg: "{{ item.name }}"
@@ -77,8 +89,10 @@
         resolution_immediacy: 'pre-provision'
         deploy_immediacy: 'immediate'
       loop: "{{ epg}}"
+      tags:
+        - epg
 
-    - name: CREATE FILTERS
+    - name: TASK 08 CREATE FILTERS
       aci_filter:
         <<: *aci_login
         tenant: "{{ tenant.name }}"
@@ -87,7 +101,7 @@
       tags:
         - filter
 
-    - name: CREATE FILTER ENTRIES
+    - name: TASK 09 CREATE FILTER ENTRIES
       aci_filter_entry:
         <<: *aci_login
         tenant: "{{ tenant.name }}"
@@ -101,7 +115,7 @@
       tags:
         - filter
 
-    - name: CREATE CONTRACT
+    - name: TASK 10 CREATE CONTRACT
       aci_contract:
         <<: *aci_login
         tenant: "{{ tenant.name }}"
@@ -111,7 +125,8 @@
       loop: "{{ contract }}"
       tags:
         - contract
-    - name: CREATE CONTRACT SUBJECT
+
+    - name: TASK 11 CREATE CONTRACT SUBJECT
       aci_contract_subject:
         <<: *aci_login
         tenant: "{{ tenant.name }}"
@@ -121,7 +136,8 @@
       loop: "{{ contract }}"
       tags:
         - contract
-    - name: ADD FILTER TO CONTRACT SUBJECT
+
+    - name: TASK 12 ADD FILTER TO CONTRACT SUBJECT
       aci_contract_subject_to_filter:
         <<: *aci_login
         tenant: "{{ tenant.name }}"
@@ -131,7 +147,8 @@
       loop: "{{ contract }}"
       tags:
         - contract
-    - name: ASSOCIATE CONTRACT TO EPG
+
+    - name: TASK 13 ASSOCIATE CONTRACT TO EPG
       aci_epg_to_contract:
         <<: *aci_login
         tenant: "{{ tenant.name }}"
