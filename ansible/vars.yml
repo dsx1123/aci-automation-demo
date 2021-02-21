@@ -4,7 +4,7 @@ tenant:
   name: ANSIBLE-DEMO
   description: "tenant create from ansible"
 vrf:
-  name: vrf1
+  name: vrf-demo
   tenant: "{{ tenant.name }}"
   description: "Ansible Demo vrf"
 app:
