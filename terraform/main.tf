@@ -6,12 +6,12 @@ terraform {
     }
   }
 }
+
 variable "password" {
   description = "APIC password"
   type        = string
   sensitive   = true
 }
-
 
 data "aci_vmm_domain" "vds" {
   provider_profile_dn = "uni/vmmp-VMware/"
@@ -19,11 +19,8 @@ data "aci_vmm_domain" "vds" {
 }
 
 provider "aci" {
-  # cisco-aci user name
   username = "admin"
-  # cisco-aci password
   password = var.password
-  # cisco-aci url
   url      = "https://10.195.225.136"
   insecure = true
 }
